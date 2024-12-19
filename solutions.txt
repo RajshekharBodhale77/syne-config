@@ -1,0 +1,458 @@
+17-12-2024
+
+Docker commands
+docker login -> logs into the docker
+docker images -> show all tha available images on docker local
+docker ps -> show all the container
+docker ps -a -> show all the container irrespective of its states
+docker pull hello-world -> pull the hello-world image from docker hub
+docker run hello-world -> run the docker image hello-world
+docker rmi hello-world --force -> to remove image from container
+
+docker run -d --name my-redis redis -> starts the docker container with name my-redis
+
+docker exec -it 1827 redis-cli -> it iterate terminal 1827 is container id first 4 word
+exit-> exit from earlier work
+
+docker pull nginx
+docker run -d --name my-nginx nginx
+docker inspect 1827 -> 1827 1827 is container id first 4 word
+curl 172.12.0.4 -> ip address we will get from above inspect command
+docker rm my-nginx --force
+docker run -d -p 3600:80 --name my-nginx nginx -> port forwarding it opens 3600 port for outsider which will internally calls to port 80
+
+if two containers wants to communicate under same docker it uses bridge network
+
+2 containers my spring project and my sql will be running on 2 different docker and will communicate using overlay network
+and we will be using docker sworm which itself is a small Kubernetes containers
+
+keep one free aws account
+digitalocean account which creates the cluster for us
+
+k8s play ground
+
+java jar location of war file
+
+18-12-2024
+docker compose
+docker sworm
+
+mkdir dockerfiles
+cd dockerfiles/
+vi dockerfiles
+
+FROM ubuntu
+CMD ["echo","Welcome to custom image"]
+
+docker build . -t users-MySQL
+docker run -p
+
+esc :wq
+
+cat dockerfile -> to check details available in dockerfile which we have inserted via vi cmd
+docker build . -t my-image
+docker images
+docker run my-image
+docker volume ls -> to check volumes(storage) available
+
+need to create volumes
+docker volume create myvol
+docker volume ls
+
+docker pull jenkins/Jenkins
+docker run --name myjenkins -v myvol:/var/jenkins_home -d -p 8081:8080 
+docker logs d269 -> extracted pwd from logs pwd = 73f0a7d4a28b45028a3469f103974f02
+docker inspect d269
+before stop create demo app in Jenkins (new item -> freestyle -> build execute shell -> echo "Welcome message")
+docker stop d269
+docker ps -a 
+docker run --name myjenkins2 -v myvol:/var/jenkins_home -d -p 8082:8080
+docker ps -a 
+
+
+docker compose
+
+docker-compose -v
+vi docker-compose.yml -> insode docker-compose.yml written below lines
+-> version: '3.7'
+services:
+  web:
+    image: nginx
+  database:
+    image: redis
+
+docker-compose config
+cat docker-compose.yml
+docker compose up -d
+docker ps
+vi docker-compose.yml -> insode docker-compose.yml written below lines
+-> version: '3.7'
+services:
+  web:
+    image: nginx
+    ports:
+    - 9090:80
+  database:
+    image: redis
+
+docker compose up -d
+docker-compose up --scale database=4 -d -> to scale database instance
+docker ps -a -> to check scaled instances of database
+
+mysql -u sa -p
+enter password as password
+show databases;
+
+https://github.com/RajshekharBodhale77/syne-config.git
+
+
+docker tag users-MySQL rajbodhale/users-mysql:1.1.0
+docker images
+docker push rajbodhale/users-mysql:1.1.0
+
+
+Kubernetes
+side car container 
+pod is a unit of containers .
+pod consist containers and volumes. Ip address get assigned to pod.
+
+
+Replica Set - if one pod goes down it will make it up another
+Replica Container
+
+Deployment -> contains Replica Set -> contains pods -> contains node
+
+k8s cluster -> single node -> Minikube - minimal resource available to try 
+kubeadm -> unmanged (onprem)
+Managed k8s cluster -> managed cluster we can use azure thats why its expensive  
+
+Types of services in kunernetes
+Gatway IP - to provide
+node port service - communicate external user/client to pods
+cluster ip - communicate between the pods which are in same cluster
+
+kubectl get nodes
+kubectl get po
+kubectl run nginx-webapp --image=nginx
+
+
+19-12-2024
+
+kubectl get no
+kubectl get no -o wide
+kubectl get po
+kubectl get ns
+kubectl run nginx-webapp --image=nginx
+kubectl get po -o wide
+kubectl get svc
+kubectl expose pod nginx-webapp --type=NodePort --port=80 -> expose pod to externam team
+kubectl get svc -> to check services details
+kubectl run pod-redis --image=redis
+kubectl get po -> to get pod details
+kubectl describe po pod-redis -> to describe the details inside pod
+
+pod creation in k8s
+
+3  vi nginx-pod.yml
+-> 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-pod
+  labels:
+    app: nginx
+spec:
+  containers:
+  - name: mginx-container
+    image: nginx
+
+4  kubectl create -f nginx-pod.yml
+5  kubectl get po
+7  kubectl exec -it nginx-pod -- /bin/sh
+->
+cat <<EOF > /usr/share/nginx/html/welcome.html
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!..</title>
+</head>
+<body>
+<h1 style="color:rgb(90,70,250);">Hello, Kubernetes...!</h1>
+<h2>Congratulations, you passed :-) </h2>
+</body>
+</html>
+EOF
+exit
+
+8  kubectl expose pod nginx-pod --type=NodePort --port=80
+9  kubectl get po
+10  kubectl get po -o wide
+11  kubectl get svc
+12  history
+
+Replication  controller creation in k8s ->  Equality based selector
+
+3  vi nginx-replica-demo.yml
+->
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: nginx-rc
+spec:
+  replicas: 3
+  template:
+    metadata:
+      name: nginx-pod
+      labels:
+        app: nginx-app
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+        ports:
+        - containerPort: 80
+  selector:
+    app: nginx-app
+
+4  ls
+7  kubectl create -f nginx-replica-demo.yml -> create the replication controller
+8  kubectl get rc
+10  kubectl get rc -o wide -> to view rc details
+11  kubectl get po -o wide -> to view pod details
+12  kubectl delete po nginx-rc-74kcq -> delete the pod -> containe will up another pod automatically
+13  kubectl get po -o wide
+14. kubectl delete po --all -> delete all the running pods-> container will again run the mentioned number of pods automatically
+
+kubectl scale rc nginx-replica-demo --replicas=5  -> to scale existing running pods
+
+Replication  controller creation in k8s ->  Equality based selector
+Replica set -> set based selector
+
+23  vi nginx-replica-set.yml
+->
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: nginx-rs
+spec:
+  replicas: 3
+  template:
+    metadata:
+      name: nginx-pod
+      labels:
+        app: nginx-app
+        tier: frontend
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+        ports:
+        - containerPort: 80
+  selector:
+    matchLabels:
+      app: nginx-app
+    matchExpressions:
+      - {key: tier, operator: In, values: [frontend]}
+24  ls
+25  kubectl create -f nginx-replica-set.yml
+26  kubectl get rs
+27  kubectl get rs -o wide
+28  kubectl get po -o wide
+
+Daemon sets -> it will make sure at least one pod running on each node or subset of node. Used for specific operations.
+30  vi nginx-daemon-set.yml
+->
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd-ds
+spec:
+  template:
+    metadata:
+      labels:
+        name: fluentd
+    spec:
+      containers:
+      - name: fluentd
+        image: gcr.io/google-containers/fluentd-elasticsearch:1.20
+  selector:
+    matchLabels:
+      name: fluentd
+31  ls
+32  kubectl create -f nginx-daemon-set.yml 
+33  kubectl get ds
+34  kubectl get ds -o wide
+35  kubectl get po
+36  kubectl get po -o wide
+37  kubectl delete po fluentd-ds-d26n5
+38  kubectl get po -o wide
+ 
+40  kubectl get nodes
+41  kubectl get nodes -o wide
+42  kubectl label nodes node01 disktype=ssd
+43  kubectl get nodes -o wide
+45  kubectl get nodes --show-labels
+
+
+52  ls
+53  vi nginx-d-set.yml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginx-ds
+spec:
+  template:
+    metadata:
+      labels:
+        name: nginx
+    spec:
+      containers:
+      - name: nginx-container
+        image: nginx
+      nodeSelector:
+        disktype: ssd
+  selector:
+    matchLabels:
+      name: nginx
+54  kubectl create -f nginx-d-set.yml
+55  kubectl get ds
+56  kubectl get ds -o wide
+57  kubectl get po -o wide
+
+Deleting fluent Id Daemon RS and giving lable to master node and deploying fluent RS on new labelled master plane
+4  kubectl get nodes -o wide
+5  kubectl label nodes controlplane disktype=abc
+6  kubectl get nodes --show-labels
+7  vi nginx-daemon-set.yml
+->
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd-ds
+spec:
+  template:
+    metadata:
+      labels:
+        name: fluentd
+    spec:
+      containers:
+      - name: fluentd
+        image: gcr.io/google-containers/fluentd-elasticsearch:1.20
+      nodeSelector:
+        disktype: abc
+  selector:
+    matchLabels:
+      name: fluentd
+
+8  ls
+9  kubectl create -f nginx-daemon-set.yml 
+10  kubectl get ds -o wide
+11  kubectl get po -o wide
+
+init-container details->
+3  vi init-container-demo.yml
+->
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+spec:
+  initContainers:
+  - name: init-myservice
+    image: busybox:1.28
+    command: ['sh', '-c', 'until nslookup myservice; do echo waiting for myservice; sleep 5; done;']
+  
+  containers:
+  - name: myapp-container
+    image: busybox:1.28
+    command: ['sh', '-c', 'echo The app is running! && sleep 3600']
+
+    4  ls
+    5  kubectl create -f init-container-demo.yml 
+    6  kubectl get p -o wide
+    7  kubectl get po -o wide
+    8  vi init-service-demo.yml
+->
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice
+spec:
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 9376
+
+    9  ls
+   10  kubectl create -f init-service-demo.yml 
+   11  kubectl get po -o wide
+   12  kubectl get po
+
+Deployment strategy
+1. Recreate strategy
+16  vi deployments-demo.yml
+->
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+  labels:
+    app: redis
+
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: redis
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis-container
+          image: redis:5.0
+17  ls
+18  kubectl create -f deployments-demo.yml 
+19  kubectl get deploy
+20  kubectl get deploy -o wide
+21  kubectl get rs -o wide
+25  kubectl get po -o wide
+
+2. Rolling update deployment strategy
+commands provided by sir
+apt-get update
+    2  halt
+    3  vi rollupdate.yaml
+    4  kubectl create -f rollupdate.yaml 
+    5  kubetcl get deploy
+    6  kubectl get deploy
+    7  kubectl rollout status deployment redis-deployment
+    8  kubectl get po --show-labels
+    9  kubectl edit deploy redis-deployment
+   10  kubectl get po --show-labels
+   11  kubectl rollout status deployment redis-deployment
+   12  history
+   13  kubectl rollout history deployment redis-deployment
+   14  kubectl get deploy
+   15  kubectl describe deploy nginx-deploy
+   16  kubectl describe deploy redis-deploy
+   17  kubectl set image deployment redis-deployment redis-container=redis:6.0.16 --record
+   18  kubectl describe deploy redis-deploy
+   19  kubectl rollout history deployment redis-deployment
+   20  kubectl set image deployment redis-deployment redis-container=redis:6.2.6 --record
+   21  kubectl rollout history deployment redis-deployment
+   22  kubectl rollout history deployment redis-deployment --revision=3
+   23  kubectl set image deployment redis-deployment redis-container=redis:5.0 --record
+   24  kubectl rollout history deployment redis-deployment
+   25  kubectl get deploy redis-deployment -o wide
+   26  kubectl rollout undo deployment redis-deployment
+   27  kubectl get deploy redis-deployment -o wide
+   28  kubectl rollout undo deployment redis-deployment --to-revision=3
+   29  kubectl get deploy redis-deployment -o wide
+   30  history
