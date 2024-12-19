@@ -456,3 +456,5 @@ apt-get update
    28  kubectl rollout undo deployment redis-deployment --to-revision=3
    29  kubectl get deploy redis-deployment -o wide
    30  history
+
+https://github.com/SkillsMetrix/syne-ms
